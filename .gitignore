@@ -1,0 +1,7 @@
+bin/unit_*
+bin/test_*
+data/image.unit
+lib/lib*.a
+test.log
+*.o
+*.swp
