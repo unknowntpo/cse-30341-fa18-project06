@@ -12,9 +12,9 @@
 /* File System Constants */
 
 #define MAGIC_NUMBER        (0xf0f03410)
-#define INODES_PER_BLOCK    (1)                 /* TODO: Number of inodes per block */
-#define POINTERS_PER_INODE  (1)                 /* TODO: Number of direct pointers per inode */
-#define POINTERS_PER_BLOCK  (1)                 /* TODO: Number of pointers per block */
+#define INODES_PER_BLOCK    (128)               /* Number of inodes per block */
+#define POINTERS_PER_INODE  (5)                 /* Number of direct pointers per inode */
+#define POINTERS_PER_BLOCK  (1024)              /* Number of pointers per block */
 
 /* File System Structures */
 
