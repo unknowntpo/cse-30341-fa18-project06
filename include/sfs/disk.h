@@ -16,7 +16,8 @@
 
 typedef struct Disk Disk;
 
-struct Disk {
+struct Disk
+{
   int fd;        /* File descriptor of disk image	*/
   size_t blocks; /* Number of blocks in disk image	*/
   size_t reads;  /* Number of reads to disk image	*/
