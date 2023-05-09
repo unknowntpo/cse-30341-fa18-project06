@@ -5,6 +5,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 /* Internal Prototyes */
 
@@ -39,11 +40,9 @@ Disk *disk_open(const char *path, size_t blocks)
         goto cleanup;
     }
 
-    disk->blocks = BLOCK_SIZE;
-    disk->reads++;
-    disk->writes++;
+    disk->blocks = blocks;
     // FIXME: Should I modify disk->mounted here ?
-    disk->mounted = true;
+    disk->mounted = false;
     disk->fd = open(path, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     if (disk->fd == -1)
     {
@@ -53,7 +52,8 @@ Disk *disk_open(const char *path, size_t blocks)
 
     if (ftruncate(disk->fd, blocks * BLOCK_SIZE) == -1)
     {
-        error("failed to truncate file %s", path);
+        int errsv = errno;
+        error("failed to truncate file %s, errno: [%d]", path, errsv);
         goto cleanup_close_fd;
     }
 
@@ -128,6 +128,8 @@ ssize_t disk_read(Disk *disk, size_t block, char *data)
         error("disk_read: read incomplete (%zd/%zu bytes)", nread, BLOCK_SIZE);
         return DISK_FAILURE;
     }
+
+    disk->reads++;
 
     return nread;
 }
@@ -215,13 +217,6 @@ bool disk_sanity_check(Disk *disk, size_t block, const char *data)
     if (!data)
     {
         error("data shuold not be NULL");
-        return false;
-    }
-    // no one is reading or writing on disk
-    // FIXME: What is the correct reference count ?
-    if (disk->reads >= 1 || disk->writes >= 1)
-    {
-        error("someone is read / writing Disk");
         return false;
     }
 
