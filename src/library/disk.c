@@ -175,6 +175,7 @@ ssize_t disk_write(Disk *disk, size_t block, char *data)
         error("failed on write: write incomplete (%zd/%zu bytes)", nwrite, BLOCK_SIZE);
         return DISK_FAILURE;
     }
+    disk->writes++;
     return nwrite;
 }
 
@@ -209,7 +210,7 @@ bool disk_sanity_check(Disk *disk, size_t block, const char *data)
         return false;
     }
     // disk block shuold be sufficient
-    if (disk->blocks < block)
+    if (disk->blocks <= block)
     {
         error("disk->blocks (%lu) < block (%lu)", disk->blocks, block);
         return false;
