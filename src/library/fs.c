@@ -16,18 +16,20 @@
  *
  * @param       disk        Pointer to Disk structure.
  **/
-void    fs_debug(Disk *disk) {
+void fs_debug(Disk *disk)
+{
     Block block;
 
     /* Read SuperBlock */
-    if (disk_read(disk, 0, block.data) == DISK_FAILURE) {
+    if (disk_read(disk, 0, block.data) == DISK_FAILURE)
+    {
         return;
     }
 
     printf("SuperBlock:\n");
-    printf("    %u blocks\n"         , block.super.blocks);
-    printf("    %u inode blocks\n"   , block.super.inode_blocks);
-    printf("    %u inodes\n"         , block.super.inodes);
+    printf("    %u blocks\n", block.super.blocks);
+    printf("    %u inode blocks\n", block.super.inode_blocks);
+    printf("    %u inodes\n", block.super.inodes);
 
     /* Read Inodes */
 }
@@ -45,7 +47,8 @@ void    fs_debug(Disk *disk) {
  * @param       disk        Pointer to Disk structure.
  * @return      Whether or not all disk operations were successful.
  **/
-bool    fs_format(Disk *disk) {
+bool fs_format(Disk *disk)
+{
     return false;
 }
 
@@ -66,8 +69,25 @@ bool    fs_format(Disk *disk) {
  * @param       disk    Pointer to Disk structure.
  * @return      Whether or not the mount operation was successful.
  **/
-bool    fs_mount(FileSystem *fs, Disk *disk) {
-    return false;
+bool fs_mount(FileSystem *fs, Disk *disk)
+{
+    if (fs->meta_data.magic_number != MAGIC_NUMBER)
+    {
+        // error("wrong magic number, got %x want %x", fs->meta_data.magic_number, MAGIC_NUMBER);
+        // FIXME: should we set magic_number here ?
+        fs->meta_data.magic_number == MAGIC_NUMBER;
+        // return false;
+    };
+
+    fs->meta_data.blocks = disk->blocks;
+
+    // See doc of SuperBlock.blocks for more example about value of inode_blocks.
+    fs->meta_data.inode_blocks = fs->meta_data.blocks / 10;
+    fs->meta_data.inodes = INODES_PER_BLOCK * fs->meta_data.inode_blocks;
+
+    // fs->meta_data.inodes = disk->blocks;
+    disk->mounted = true;
+    return true;
 }
 
 /**
@@ -79,7 +99,8 @@ bool    fs_mount(FileSystem *fs, Disk *disk) {
  *
  * @param       fs      Pointer to FileSystem structure.
  **/
-void    fs_unmount(FileSystem *fs) {
+void fs_unmount(FileSystem *fs)
+{
 }
 
 /**
@@ -94,7 +115,8 @@ void    fs_unmount(FileSystem *fs) {
  * @param       fs      Pointer to FileSystem structure.
  * @return      Inode number of allocated Inode.
  **/
-ssize_t fs_create(FileSystem *fs) {
+ssize_t fs_create(FileSystem *fs)
+{
     return -1;
 }
 
@@ -113,7 +135,8 @@ ssize_t fs_create(FileSystem *fs) {
  * @param       inode_number    Inode to remove.
  * @return      Whether or not removing the specified Inode was successful.
  **/
-bool    fs_remove(FileSystem *fs, size_t inode_number) {
+bool fs_remove(FileSystem *fs, size_t inode_number)
+{
     return false;
 }
 
@@ -124,7 +147,8 @@ bool    fs_remove(FileSystem *fs, size_t inode_number) {
  * @param       inode_number    Inode to remove.
  * @return      Size of specified Inode (-1 if does not exist).
  **/
-ssize_t fs_stat(FileSystem *fs, size_t inode_number) {
+ssize_t fs_stat(FileSystem *fs, size_t inode_number)
+{
     return -1;
 }
 
@@ -145,7 +169,8 @@ ssize_t fs_stat(FileSystem *fs, size_t inode_number) {
  * @param       offset          Byte offset from which to begin reading.
  * @return      Number of bytes read (-1 on error).
  **/
-ssize_t fs_read(FileSystem *fs, size_t inode_number, char *data, size_t length, size_t offset) {
+ssize_t fs_read(FileSystem *fs, size_t inode_number, char *data, size_t length, size_t offset)
+{
     return -1;
 }
 
@@ -166,7 +191,8 @@ ssize_t fs_read(FileSystem *fs, size_t inode_number, char *data, size_t length, 
  * @param       offset          Byte offset from which to begin writing.
  * @return      Number of bytes read (-1 on error).
  **/
-ssize_t fs_write(FileSystem *fs, size_t inode_number, char *data, size_t length, size_t offset) {
+ssize_t fs_write(FileSystem *fs, size_t inode_number, char *data, size_t length, size_t offset)
+{
     return -1;
 }
 
