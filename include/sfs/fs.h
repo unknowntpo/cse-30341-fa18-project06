@@ -16,6 +16,9 @@
 #define POINTERS_PER_INODE (5)    /* Number of direct pointers per inode */
 #define POINTERS_PER_BLOCK (1024) /* Number of pointers per block */
 
+#define FS_FAILURE (-1)
+#define fS_SUCCESS (0)
+
 /* File System Structures */
 
 typedef struct SuperBlock SuperBlock;
@@ -73,6 +76,8 @@ ssize_t fs_stat(FileSystem *fs, size_t inode_number);
 
 ssize_t fs_read(FileSystem *fs, size_t inode_number, char *data, size_t length, size_t offset);
 ssize_t fs_write(FileSystem *fs, size_t inode_number, char *data, size_t length, size_t offset);
+
+int fs_build_free_block_map(FileSystem *fs, Disk *disk);
 
 #endif
 

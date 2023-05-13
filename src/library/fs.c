@@ -71,13 +71,6 @@ bool fs_format(Disk *disk)
  **/
 bool fs_mount(FileSystem *fs, Disk *disk)
 {
-    if (fs->meta_data.magic_number != MAGIC_NUMBER)
-    {
-        // error("wrong magic number, got %x want %x", fs->meta_data.magic_number, MAGIC_NUMBER);
-        // FIXME: should we set magic_number here ?
-        fs->meta_data.magic_number == MAGIC_NUMBER;
-        // return false;
-    };
 
     fs->meta_data.blocks = disk->blocks;
 
@@ -85,9 +78,78 @@ bool fs_mount(FileSystem *fs, Disk *disk)
     fs->meta_data.inode_blocks = fs->meta_data.blocks / 10;
     fs->meta_data.inodes = INODES_PER_BLOCK * fs->meta_data.inode_blocks;
 
+    char *data = malloc(sizeof(BLOCK_SIZE));
+    if (data == NULL)
+    {
+        error("failed on malloc for data");
+        return false;
+    }
+    // read superblock
+
+    ssize_t nread = disk_read(disk, 0, data);
+    if (nread == DISK_FAILURE)
+    {
+        error("failed on disk_read");
+        return false;
+    }
+    SuperBlock sb;
+
+    memcpy(&sb, data, sizeof(sb));
+
+    if (sb.magic_number != MAGIC_NUMBER)
+    {
+        error("wrong magic number, got %x want %x", fs->meta_data.magic_number, MAGIC_NUMBER);
+    };
+
+    fs->meta_data = sb;
+
+    // All blocks are free ?
+    if (fs_build_free_block_map(fs, disk) == FS_FAILURE)
+    {
+        error("failed on fs_build_free_block_map");
+        return false;
+    };
+
     // fs->meta_data.inodes = disk->blocks;
     disk->mounted = true;
+
+    fs->disk = disk;
+
     return true;
+}
+
+int fs_build_free_block_map(FileSystem *fs, Disk *disk)
+{
+    fs->free_blocks = malloc(fs->meta_data.inodes * sizeof(fs->free_blocks));
+    if (fs->free_blocks == NULL)
+        return FS_FAILURE;
+
+    // for each block
+    //     for each inode in block
+    //         set fs->free_blocks(offset)
+
+    // for each block
+    Block block;
+
+    int inodeBlockOffSet = 1;
+    for (int b = inodeBlockOffSet; b < inodeBlockOffSet + fs->meta_data.inode_blocks; b++)
+    {
+        if (disk_read(disk, b, &block.inodes[0]) == DISK_FAILURE)
+        {
+            return;
+        }
+
+        for (int inode_idx = 0; inode_idx < INODES_PER_BLOCK; inode_idx++)
+        {
+            //         set fs->free_blocks(offset)
+            int offset = b * INODES_PER_BLOCK + inode_idx;
+            fs->free_blocks[offset] =
+        }
+    }
+
+    // read inodes from inode blocks
+    // set valid flag to free_block_map
+    return FS_FAILURE;
 }
 
 /**
