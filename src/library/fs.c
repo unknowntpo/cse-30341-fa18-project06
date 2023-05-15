@@ -21,8 +21,9 @@ void fs_debug(Disk *disk)
     Block block;
 
     /* Read SuperBlock */
-    if (disk_read(disk, 0, block.data) == DISK_FAILURE)
+    if (disk_read(disk, 0, (char *)&block) == DISK_FAILURE)
     {
+        error("failed on disk_read for superblock");
         return;
     }
 
@@ -32,6 +33,7 @@ void fs_debug(Disk *disk)
     printf("    %u inodes\n", block.super.inodes);
 
     /* Read Inodes */
+    // printf("    %u inodes\n", block.);
 }
 
 /**
@@ -134,22 +136,35 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
     int inodeBlockOffSet = 1;
     for (int b = inodeBlockOffSet; b < inodeBlockOffSet + fs->meta_data.inode_blocks; b++)
     {
-        if (disk_read(disk, b, &block.inodes[0]) == DISK_FAILURE)
+        if (disk_read(disk, b, (char *)block.inodes) == DISK_FAILURE)
         {
-            return;
+            error("failed on disk_read at inodeBlockOffSet: %d", b);
+            return FS_FAILURE;
         }
 
         for (int inode_idx = 0; inode_idx < INODES_PER_BLOCK; inode_idx++)
         {
+
             //         set fs->free_blocks(offset)
             int offset = b * INODES_PER_BLOCK + inode_idx;
-            fs->free_blocks[offset] =
+            bool valid = block.inodes[inode_idx].valid;
+            if (valid)
+                printf("valid == true at block[%d] inode_idx[%d]\n", b, inode_idx);
+            fs->free_blocks[offset] = valid;
         }
     }
 
+    for (int i = 0; i < fs->meta_data.inodes * sizeof(fs->free_blocks); i++)
+    {
+        if (i > 10)
+            break;
+        printf("free_blocks[%d]: %d\n", i, fs->free_blocks[i]);
+    }
+
+    // fs_debug()
     // read inodes from inode blocks
     // set valid flag to free_block_map
-    return FS_FAILURE;
+    return fS_SUCCESS;
 }
 
 /**

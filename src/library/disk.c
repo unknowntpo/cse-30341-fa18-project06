@@ -113,7 +113,7 @@ ssize_t disk_read(Disk *disk, size_t block, char *data)
     off_t offset = (off_t)block * BLOCK_SIZE;
     if (lseek(disk->fd, offset, SEEK_SET) == -1)
     {
-        error("disk_read: lseek failed: failed to seek to offset %d", offset);
+        error("disk_read: lseek failed: failed to seek to offset %lld", offset);
         return DISK_FAILURE;
     }
 
@@ -167,7 +167,7 @@ ssize_t disk_write(Disk *disk, size_t block, char *data)
     ssize_t nwrite = write(disk->fd, data, BLOCK_SIZE);
     if (nwrite == -1)
     {
-        error("disk_read: read failed: failed to read at offset [%d]", offset);
+        error("disk_read: read failed: failed to read at offset [%lld]", offset);
         return DISK_FAILURE;
     }
     else if (nwrite != (ssize_t)BLOCK_SIZE)
