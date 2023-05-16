@@ -133,6 +133,7 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
     // for each block
     Block block;
 
+    /* Skip super block */
     int inodeBlockOffSet = 1;
     for (int b = inodeBlockOffSet; b < inodeBlockOffSet + fs->meta_data.inode_blocks; b++)
     {
@@ -146,11 +147,39 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
         {
 
             //         set fs->free_blocks(offset)
-            int offset = b * INODES_PER_BLOCK + inode_idx;
-            bool valid = block.inodes[inode_idx].valid;
-            if (valid)
-                printf("valid == true at block[%d] inode_idx[%d]\n", b, inode_idx);
-            fs->free_blocks[offset] = valid;
+            // int offset = b * INODES_PER_BLOCK + inode_idx;
+            Inode inode = block.inodes[inode_idx];
+            if (inode.valid)
+            {
+                // fs->free_blocks[offset] = valid;
+                // scan direct blocks
+                for (int direct_idx = 0; direct_idx < POINTERS_PER_INODE; direct_idx++)
+                {
+                    uint32_t ptr = inode.direct[direct_idx];
+                    if (ptr != 0)
+                    {
+                        fs->free_blocks[ptr] = true;
+                    }
+                }
+
+                if (inode.indirect > 0)
+                {
+                    // read indirect block
+                    Block indir_block;
+                    if (disk_read(disk, b, (char *)indir_block.pointers) == DISK_FAILURE)
+                    {
+                        error("failed on disk_read at indirect block: block_number: %d", b);
+                        return FS_FAILURE;
+                    }
+                    // for every indir pointers inside indir_block
+                    // set fs->free_blocks
+                    for (int ptr = 0; ptr < POINTERS_PER_BLOCK; ptr++)
+                    {
+                        if (ptr != 0)
+                            fs->free_blocks[ptr] = true;
+                    }
+                }
+            }
         }
     }
 
