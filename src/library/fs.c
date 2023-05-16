@@ -132,15 +132,10 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
         fs->free_blocks[i] = (i == 0 || i <= fs->meta_data.inode_blocks) ? false : true;
     }
 
+    // FIXME: Why memset will cause seg fault ?
     // memset(&fs->free_blocks, true, fs->meta_data.blocks * sizeof(bool));
 
-    // for each block
-    //     for each inode in block
-    //         set fs->free_blocks(offset)
-
-    // for each block
     Block block;
-
     /* Skip super block */
     int inodeBlockOffSet = 1;
     for (int b = inodeBlockOffSet; b < inodeBlockOffSet + fs->meta_data.inode_blocks; b++)
