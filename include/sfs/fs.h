@@ -16,8 +16,8 @@
 #define POINTERS_PER_INODE (5)    /* Number of direct pointers per inode */
 #define POINTERS_PER_BLOCK (1024) /* Number of pointers per block */
 
-#define FS_FAILURE (-1)
-#define fS_SUCCESS (0)
+#define FS_FAILURE (false)
+#define fS_SUCCESS (true)
 
 /* File System Structures */
 

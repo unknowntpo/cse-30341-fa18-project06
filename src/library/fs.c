@@ -5,6 +5,7 @@
 #include "sfs/utils.h"
 
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 
 /**
@@ -21,7 +22,7 @@ void fs_debug(Disk *disk)
     Block block;
 
     /* Read SuperBlock */
-    if (disk_read(disk, 0, (char *)&block) == DISK_FAILURE)
+    if (disk_read(disk, 0, (char *)&block.data) == DISK_FAILURE)
     {
         error("failed on disk_read for superblock");
         return;
@@ -73,37 +74,35 @@ bool fs_format(Disk *disk)
  **/
 bool fs_mount(FileSystem *fs, Disk *disk)
 {
+    if (disk->mounted)
+    {
+        error("disk is already mounted");
+        return FS_FAILURE;
+    }
 
     fs->meta_data.blocks = disk->blocks;
 
     // See doc of SuperBlock.blocks for more example about value of inode_blocks.
-    fs->meta_data.inode_blocks = fs->meta_data.blocks / 10;
+    fs->meta_data.inode_blocks = ceil((double)fs->meta_data.blocks / (double)10);
     fs->meta_data.inodes = INODES_PER_BLOCK * fs->meta_data.inode_blocks;
 
-    char *data = malloc(sizeof(BLOCK_SIZE));
-    if (data == NULL)
-    {
-        error("failed on malloc for data");
-        return false;
-    }
-    // read superblock
-
-    ssize_t nread = disk_read(disk, 0, data);
+    Block block;
+    ssize_t nread = disk_read(disk, 0, (char *)block.data);
     if (nread == DISK_FAILURE)
     {
-        error("failed on disk_read");
+        error("failed on disk_read for superblock");
         return false;
     }
-    SuperBlock sb;
 
-    memcpy(&sb, data, sizeof(sb));
+    memcpy(&fs->meta_data, &block.data, sizeof(fs->meta_data));
 
-    if (sb.magic_number != MAGIC_NUMBER)
+    fs->meta_data = block.super;
+    if (fs->meta_data.magic_number != MAGIC_NUMBER)
     {
         error("wrong magic number, got %x want %x", fs->meta_data.magic_number, MAGIC_NUMBER);
     };
 
-    fs->meta_data = sb;
+    fs_debug(disk);
 
     // All blocks are free ?
     if (fs_build_free_block_map(fs, disk) == FS_FAILURE)
@@ -122,9 +121,18 @@ bool fs_mount(FileSystem *fs, Disk *disk)
 
 int fs_build_free_block_map(FileSystem *fs, Disk *disk)
 {
-    fs->free_blocks = malloc(fs->meta_data.inodes * sizeof(fs->free_blocks));
+    fs->free_blocks = malloc(fs->meta_data.blocks * sizeof(fs->free_blocks));
     if (fs->free_blocks == NULL)
         return FS_FAILURE;
+
+    // set all blocks to be free
+    for (int i = 0; i < fs->meta_data.blocks; i++)
+    {
+        // i == 0: superblock, i == 1: inode block
+        fs->free_blocks[i] = (i == 0 || i <= fs->meta_data.inode_blocks) ? false : true;
+    }
+
+    // memset(&fs->free_blocks, true, fs->meta_data.blocks * sizeof(bool));
 
     // for each block
     //     for each inode in block
@@ -158,7 +166,8 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
                     uint32_t ptr = inode.direct[direct_idx];
                     if (ptr != 0)
                     {
-                        fs->free_blocks[ptr] = true;
+                        // this block is in use
+                        fs->free_blocks[ptr] = false;
                     }
                 }
 
@@ -176,23 +185,21 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
                     for (int ptr = 0; ptr < POINTERS_PER_BLOCK; ptr++)
                     {
                         if (ptr != 0)
-                            fs->free_blocks[ptr] = true;
+                            // this block is in use
+                            fs->free_blocks[ptr] = false;
                     }
                 }
             }
         }
     }
 
-    for (int i = 0; i < fs->meta_data.inodes * sizeof(fs->free_blocks); i++)
+    for (int i = 0; i < fs->meta_data.blocks * sizeof(fs->free_blocks); i++)
     {
         if (i > 10)
             break;
         printf("free_blocks[%d]: %d\n", i, fs->free_blocks[i]);
     }
 
-    // fs_debug()
-    // read inodes from inode blocks
-    // set valid flag to free_block_map
     return fS_SUCCESS;
 }
 
