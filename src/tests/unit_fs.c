@@ -11,19 +11,21 @@
 
 /* Functions */
 
-void test_cleanup() {
+void test_cleanup()
+{
     unlink("data/image.unit");
 }
 
-int test_00_fs_mount() {
+int test_00_fs_mount()
+{
     Disk *disk = disk_open("data/image.5", 5);
     assert(disk);
 
     FileSystem fs = {0};
     debug("Check mounting filesystem");
     assert(fs_mount(&fs, disk));
-    assert(fs.disk           == disk);
-    assert(fs.disk->mounted  == true);
+    assert(fs.disk == disk);
+    assert(fs.disk->mounted == true);
     assert(fs.free_blocks);
     assert(fs.free_blocks[0] == false);
     assert(fs.free_blocks[1] == false);
@@ -36,14 +38,14 @@ int test_00_fs_mount() {
 
     fs_unmount(&fs);
     disk_close(disk);
-    
+
     disk = disk_open("data/image.20", 20);
     assert(disk);
 
     debug("Check mounting filesystem");
     assert(fs_mount(&fs, disk));
-    assert(fs.disk           == disk);
-    assert(fs.disk->mounted  == true);
+    assert(fs.disk == disk);
+    assert(fs.disk->mounted == true);
     assert(fs.free_blocks);
     assert(fs.free_blocks[0] == false);
     assert(fs.free_blocks[1] == false);
@@ -74,7 +76,8 @@ int test_00_fs_mount() {
     return EXIT_SUCCESS;
 }
 
-int test_01_fs_create() {
+int test_01_fs_create()
+{
     assert(system("cp data/image.5 data/image.unit") == EXIT_SUCCESS);
 
     Disk *disk = disk_open("data/image.unit", 5);
@@ -85,13 +88,14 @@ int test_01_fs_create() {
 
     debug("Check creating inodes");
     assert(fs_create(&fs) == 0);
-    for (size_t i = 2; i < 128; i++) {
+    for (size_t i = 2; i < 128; i++)
+    {
         assert(fs_create(&fs) == i);
 
         Block block;
         assert(disk_read(fs.disk, 1, block.data) != DISK_FAILURE);
         assert(block.inodes[i].valid == true);
-        assert(block.inodes[i].size  == 0);
+        assert(block.inodes[i].size == 0);
     }
 
     debug("Check creating inodes (table full)");
@@ -103,7 +107,8 @@ int test_01_fs_create() {
     return EXIT_SUCCESS;
 }
 
-int test_02_fs_remove() {
+int test_02_fs_remove()
+{
     assert(system("cp data/image.20 data/image.unit") == EXIT_SUCCESS);
 
     Disk *disk = disk_open("data/image.unit", 20);
@@ -129,7 +134,7 @@ int test_02_fs_remove() {
     Block block;
     assert(disk_read(fs.disk, 1, block.data) != DISK_FAILURE);
     assert(block.inodes[2].valid == false);
-    assert(block.inodes[2].size  == 0);
+    assert(block.inodes[2].size == 0);
 
     debug("Check removing inode 2 (already removed)");
     assert(fs_remove(&fs, 1) == false);
@@ -139,7 +144,8 @@ int test_02_fs_remove() {
     return EXIT_SUCCESS;
 }
 
-int test_03_fs_stat() {
+int test_03_fs_stat()
+{
     Disk *disk = disk_open("data/image.5", 5);
     assert(disk);
 
@@ -152,7 +158,7 @@ int test_03_fs_stat() {
 
     fs_unmount(&fs);
     disk_close(disk);
-    
+
     disk = disk_open("data/image.20", 20);
     assert(disk);
     assert(fs_mount(&fs, disk));
@@ -168,8 +174,10 @@ int test_03_fs_stat() {
 
 /* Main execution */
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
+int main(int argc, char *argv[])
+{
+    if (argc != 2)
+    {
         fprintf(stderr, "Usage: %s NUMBER\n\n", argv[0]);
         fprintf(stderr, "Where NUMBER is right of the following:\n");
         fprintf(stderr, "    0. Test fs_mount\n");
@@ -184,12 +192,23 @@ int main(int argc, char *argv[]) {
 
     assert(atexit(test_cleanup) == EXIT_SUCCESS);
 
-    switch (number) {
-        case 0:  status = test_00_fs_mount(); break;
-        case 1:  status = test_01_fs_create(); break;
-        case 2:  status = test_02_fs_remove(); break;
-        case 3:  status = test_03_fs_stat(); break;
-        default: fprintf(stderr, "Unknown NUMBER: %d\n", number); break;
+    switch (number)
+    {
+    case 0:
+        status = test_00_fs_mount();
+        break;
+    case 1:
+        status = test_01_fs_create();
+        break;
+    case 2:
+        status = test_02_fs_remove();
+        break;
+    case 3:
+        status = test_03_fs_stat();
+        break;
+    default:
+        fprintf(stderr, "Unknown NUMBER: %d\n", number);
+        break;
     }
 
     return status;

@@ -67,6 +67,10 @@ struct FileSystem
 void fs_debug(Disk *disk);
 bool fs_format(Disk *disk);
 
+/* Helper function */
+void print_direct_blocks(uint32_t *pDirect);
+void print_indirect_blocks(uint32_t *pIndir);
+
 bool fs_mount(FileSystem *fs, Disk *disk);
 void fs_unmount(FileSystem *fs);
 

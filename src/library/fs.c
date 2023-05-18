@@ -28,13 +28,69 @@ void fs_debug(Disk *disk)
         return;
     }
 
+    SuperBlock sb = block.super;
     printf("SuperBlock:\n");
-    printf("    %u blocks\n", block.super.blocks);
-    printf("    %u inode blocks\n", block.super.inode_blocks);
-    printf("    %u inodes\n", block.super.inodes);
+    printf("    %u blocks\n", sb.blocks);
+    printf("    %u inode blocks\n", sb.inode_blocks);
+    printf("    %u inodes\n", sb.inodes);
 
     /* Read Inodes */
     // printf("    %u inodes\n", block.);
+    // for each inode block,
+    // // for each inode
+    // // // print status
+    /* Skip super block */
+    int inodeBlockOffSet = 1;
+    for (int b = inodeBlockOffSet; b < inodeBlockOffSet + sb.inode_blocks; b++)
+    {
+        if (disk_read(disk, b, (char *)block.inodes) == DISK_FAILURE)
+        {
+            error("failed on disk_read at inodeBlockOffSet: %d", b);
+            return;
+        }
+
+        for (int inode_idx = 0; inode_idx < INODES_PER_BLOCK; inode_idx++)
+        {
+            // // for each inode
+            Inode inode = block.inodes[inode_idx];
+            printf("inodes[%d][%d]: ", b - 1, inode_idx);
+            // uint32_t valid;                      /* Whether or not inode is valid */
+            // uint32_t size;                       /* Size of file */
+            // uint32_t direct[POINTERS_PER_INODE]; /* Direct pointers */
+            // uint32_t indirect;                   /* Indirect pointers */
+            printf("    valid: %d\n", inode.valid);
+            if (!inode.valid)
+            {
+                continue;
+            }
+            printf("    direct blocks:\t");
+            print_direct_blocks(&inode.direct);
+            printf("    indirect blocks\t", sb.inodes);
+            // print_indirect_blocks(&inode.indirect);
+        }
+    }
+}
+
+void print_direct_blocks(uint32_t *pDirect)
+{
+    printf("[");
+    for (int i = 0; i < POINTERS_PER_INODE; i++)
+    {
+        printf("%d", *(pDirect + i));
+        printf(",");
+    }
+    printf("]\n");
+}
+
+void print_indirect_blocks(uint32_t *pIndir)
+{
+    printf("[");
+    for (int i = 0; i < POINTERS_PER_BLOCK; i++)
+    {
+        printf("%d", *(pIndir + i));
+        printf(",");
+    }
+    printf("]\n");
 }
 
 /**
@@ -119,17 +175,21 @@ bool fs_mount(FileSystem *fs, Disk *disk)
     return true;
 }
 
+/*
+[sb, i, i]
+fs->meta_data.inode_blocks = 2
+*/
 int fs_build_free_block_map(FileSystem *fs, Disk *disk)
 {
     fs->free_blocks = malloc(fs->meta_data.blocks * sizeof(fs->free_blocks));
     if (fs->free_blocks == NULL)
         return FS_FAILURE;
 
-    // set all blocks to be free
+    // set all blocks to be free except superblock and inode blocks
     for (int i = 0; i < fs->meta_data.blocks; i++)
     {
         // i == 0: superblock, i == 1: inode block
-        fs->free_blocks[i] = (i == 0 || i <= fs->meta_data.inode_blocks) ? false : true;
+        fs->free_blocks[i] = (i <= fs->meta_data.inode_blocks) ? false : true;
     }
 
     // FIXME: Why memset will cause seg fault ?
@@ -144,6 +204,11 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
         {
             error("failed on disk_read at inodeBlockOffSet: %d", b);
             return FS_FAILURE;
+        }
+
+        for (int i = 0; i < fs->meta_data.blocks; i++)
+        {
+            printf("before set: free_blocks[%d]: %d\n", i, fs->free_blocks[i]);
         }
 
         for (int inode_idx = 0; inode_idx < INODES_PER_BLOCK; inode_idx++)
@@ -188,10 +253,8 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
         }
     }
 
-    for (int i = 0; i < fs->meta_data.blocks * sizeof(fs->free_blocks); i++)
+    for (int i = 0; i < fs->meta_data.blocks; i++)
     {
-        if (i > 10)
-            break;
         printf("free_blocks[%d]: %d\n", i, fs->free_blocks[i]);
     }
 
