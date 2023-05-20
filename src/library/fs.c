@@ -65,8 +65,7 @@ void fs_debug(Disk *disk)
             }
             printf("    direct blocks:\t");
             print_direct_blocks(&inode.direct);
-            printf("    indirect blocks\t", sb.inodes);
-            // print_indirect_blocks(&inode.indirect);
+            printf("    indirect block location: block[%d]\n", inode.indirect);
         }
     }
 }
@@ -87,8 +86,15 @@ void print_indirect_blocks(uint32_t *pIndir)
     printf("[");
     for (int i = 0; i < POINTERS_PER_BLOCK; i++)
     {
-        printf("%d", *(pIndir + i));
-        printf(",");
+        if (*(pIndir + i) != 0)
+        {
+            printf("%d", *(pIndir + i));
+            printf(",");
+        }
+        else
+        {
+            continue;
+        }
     }
     printf("]\n");
 }
@@ -189,7 +195,21 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
     for (int i = 0; i < fs->meta_data.blocks; i++)
     {
         // i == 0: superblock, i == 1: inode block
-        fs->free_blocks[i] = (i <= fs->meta_data.inode_blocks) ? false : true;
+        fs->free_blocks[i] = true;
+    }
+
+    // set super block to false;
+    fs->free_blocks[0] = false;
+
+    for (size_t i = 0; i < fs->meta_data.inode_blocks; i++)
+    {
+        size_t num_of_superblock = 1;
+        fs->free_blocks[num_of_superblock + i] = false;
+    }
+
+    for (int i = 0; i < fs->meta_data.blocks; i++)
+    {
+        printf("before set: free_blocks[%d]: %d\n", i, fs->free_blocks[i]);
     }
 
     // FIXME: Why memset will cause seg fault ?
@@ -204,11 +224,6 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
         {
             error("failed on disk_read at inodeBlockOffSet: %d", b);
             return FS_FAILURE;
-        }
-
-        for (int i = 0; i < fs->meta_data.blocks; i++)
-        {
-            printf("before set: free_blocks[%d]: %d\n", i, fs->free_blocks[i]);
         }
 
         for (int inode_idx = 0; inode_idx < INODES_PER_BLOCK; inode_idx++)
@@ -233,17 +248,20 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
 
                 if (inode.indirect > 0)
                 {
+                    // mark indirect blocks in-use
+                    fs->free_blocks[inode.indirect] = false;
                     // read indirect block
                     Block indir_block;
-                    if (disk_read(disk, b, (char *)indir_block.pointers) == DISK_FAILURE)
+                    if (disk_read(disk, inode.indirect, (char *)indir_block.pointers) == DISK_FAILURE)
                     {
                         error("failed on disk_read at indirect block: block_number: %d", b);
                         return FS_FAILURE;
                     }
                     // for every indir pointers inside indir_block
                     // set fs->free_blocks
-                    for (int ptr = 0; ptr < POINTERS_PER_BLOCK; ptr++)
+                    for (int i = 0; i < POINTERS_PER_BLOCK; i++)
                     {
+                        size_t ptr = indir_block.pointers[i];
                         if (ptr != 0)
                             // this block is in use
                             fs->free_blocks[ptr] = false;
