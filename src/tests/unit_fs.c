@@ -196,6 +196,7 @@ int main(int argc, char *argv[])
     {
     case 0:
         status = test_00_fs_mount();
+        info("test_00_fs_mount OK");
         break;
     case 1:
         status = test_01_fs_create();
