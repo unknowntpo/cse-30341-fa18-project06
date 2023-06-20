@@ -306,7 +306,19 @@ void fs_unmount(FileSystem *fs)
  **/
 ssize_t fs_create(FileSystem *fs)
 {
-    return -1;
+    size_t block_idx = fs->meta_data.inodes / INODES_PER_BLOCK;
+    size_t lastIdx = fs->meta_data.inodes % INODES_PER_BLOCK;
+
+    // FIXME: What is the maximum inodes in fs ?
+
+    /*
+        new inode location: [block_idx, lastIdx]
+        Example:
+        - INODES_PER_BLOCK = 3
+        - block_idx = 4 / 3 = 1
+        - lastIdx = 4 % 3 = 1
+        [0, 1, 2] [3]
+    */
 }
 
 /**
