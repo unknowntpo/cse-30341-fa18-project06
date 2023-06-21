@@ -1,5 +1,3 @@
-/* fs.c: SimpleFS file system */
-
 #include "sfs/fs.h"
 #include "sfs/logging.h"
 #include "sfs/utils.h"
@@ -306,19 +304,48 @@ void fs_unmount(FileSystem *fs)
  **/
 ssize_t fs_create(FileSystem *fs)
 {
-    size_t block_idx = fs->meta_data.inodes / INODES_PER_BLOCK;
-    size_t lastIdx = fs->meta_data.inodes % INODES_PER_BLOCK;
-
     // FIXME: What is the maximum inodes in fs ?
+    // Sanity Check: if num of indoes >= maximum inode capacity, we return false;
+    size_t max_inodes = INODES_PER_BLOCK * fs->meta_data.inode_blocks;
+    if (fs->meta_data.inodes >= max_inodes)
+    {
+        error("failed on fs_create: exceed max num of inodes %ld", max_inodes);
+        return FS_FAILURE;
+    }
 
     /*
-        new inode location: [block_idx, lastIdx]
-        Example:
-        - INODES_PER_BLOCK = 3
-        - block_idx = 4 / 3 = 1
-        - lastIdx = 4 % 3 = 1
-        [0, 1, 2] [3]
-    */
+            new inode location: [block_idx, lastIdx]
+            Example:
+            - INODES_PER_BLOCK = 3
+            - block_idx = 4 / 3 = 1
+            - cur_idx = 4 % 3 = 1
+            [0, 1, 2] [3]
+        */
+    size_t block_idx = fs->meta_data.inodes / INODES_PER_BLOCK;
+    size_t cur_idx = fs->meta_data.inodes % INODES_PER_BLOCK;
+
+    // TODO: access that Inode by reading the corresponding inode blocks, set inode.valid = true
+    Block block;
+    if (disk_read(fs->disk, block_idx, (char *)block.inodes) == DISK_FAILURE)
+    {
+        error("failed on disk_read at block_index: %d", block_idx);
+        return FS_FAILURE;
+    }
+
+    Inode inode = block.inodes[cur_idx];
+    inode.valid = true;
+    inode.size = 0;
+    memset(inode.direct, 0, POINTERS_PER_INODE);
+
+    if (disk_write(fs->disk, block_idx, (char *)block.inodes) == DISK_FAILURE)
+    {
+        error("failed on disk_write at block_index: %d", block_idx);
+        return FS_FAILURE;
+    }
+
+    ssize_t inode_num = fs->meta_data.inodes;
+    fs->meta_data.inodes++;
+    return inode_num;
 }
 
 /**
