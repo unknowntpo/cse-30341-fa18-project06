@@ -144,7 +144,9 @@ bool fs_mount(FileSystem *fs, Disk *disk)
 
     // See doc of SuperBlock.blocks for more example about value of inode_blocks.
     fs->meta_data.inode_blocks = ceil((double)fs->meta_data.blocks / (double)10);
-    fs->meta_data.inodes = INODES_PER_BLOCK * fs->meta_data.inode_blocks;
+    // FIXME: We should read inode blocks to set these inode-related values
+    fs->meta_data.inodes = fs_count_inodes(fs);
+    debug("indoes: %ld", fs->meta_data.inodes);
 
     Block block;
     ssize_t nread = disk_read(disk, 0, (char *)block.data);
@@ -162,8 +164,6 @@ bool fs_mount(FileSystem *fs, Disk *disk)
         error("wrong magic number, got %x want %x", fs->meta_data.magic_number, MAGIC_NUMBER);
     };
 
-    fs_debug(disk);
-
     // All blocks are free ?
     if (fs_build_free_block_map(fs, disk) == FS_FAILURE)
     {
@@ -177,6 +177,41 @@ bool fs_mount(FileSystem *fs, Disk *disk)
     fs->disk = disk;
 
     return true;
+}
+
+/*
+ * fs_count_inodes counts the number of inodes in fs.
+ * RETURN:
+ * -1 if any error occured.
+ * number of inodes if it's fs_count_inodes is executed successfully.
+ */
+ssize_t fs_count_inodes(FileSystem *fs)
+{
+    size_t inode_cnt = 0;
+    Block block;
+    /* Skip super block */
+    int inodeBlockOffSet = 1;
+    for (size_t b = inodeBlockOffSet; b < inodeBlockOffSet + fs->meta_data.inode_blocks; b++)
+    {
+        if (disk_read(fs->disk, b, (char *)block.inodes) == DISK_FAILURE)
+        {
+            error("failed on disk_read for inode block at inodeBlockOffSet: %d", b);
+            return FS_FAILURE;
+            inode_cnt += fs_count_inodes_from_block(&block);
+        }
+    }
+    return inode_cnt;
+}
+
+size_t fs_count_inodes_from_block(Block *block)
+{
+    size_t cnt = 0;
+    for (size_t i = 0; i < INODES_PER_BLOCK; i++)
+    {
+        if (block->inodes[i].valid == true)
+            cnt++;
+    }
+    return cnt;
 }
 
 /*

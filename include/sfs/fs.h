@@ -82,6 +82,8 @@ ssize_t fs_read(FileSystem *fs, size_t inode_number, char *data, size_t length, 
 ssize_t fs_write(FileSystem *fs, size_t inode_number, char *data, size_t length, size_t offset);
 
 int fs_build_free_block_map(FileSystem *fs, Disk *disk);
+ssize_t fs_count_inodes(FileSystem *fs);
+size_t fs_count_inodes_from_block(Block *block);
 
 #endif
 

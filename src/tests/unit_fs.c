@@ -86,10 +86,13 @@ int test_01_fs_create()
     FileSystem fs = {0};
     assert(fs_mount(&fs, disk));
 
+    fs_debug(disk);
+
     debug("Check creating inodes");
     assert(fs_create(&fs) == 0);
     for (size_t i = 2; i < 128; i++)
     {
+        info("i: %ld", i);
         assert(fs_create(&fs) == i);
 
         Block block;
