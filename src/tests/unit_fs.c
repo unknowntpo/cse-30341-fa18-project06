@@ -86,6 +86,8 @@ int test_01_fs_create()
     FileSystem fs = {0};
     assert(fs_mount(&fs, disk));
 
+    info("reach fs_mount");
+
     fs_debug(disk);
 
     debug("Check creating inodes");
