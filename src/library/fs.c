@@ -181,6 +181,12 @@ bool fs_mount(FileSystem *fs, Disk *disk)
         return false;
     };
 
+    if (fs_build_free_inode_map(fs, disk) == FS_FAILURE)
+    {
+        error("failed on fs_build_free_inode_map");
+        return false;
+    };
+
     // fs->meta_data.inodes = disk->blocks;
     disk->mounted = true;
 
@@ -217,9 +223,50 @@ size_t fs_count_inodes_from_block(Block *block)
     for (size_t i = 0; i < INODES_PER_BLOCK; i++)
     {
         if (block->inodes[i].valid == true)
+        {
+            info("block->inodes[%d] is valid", i);
             cnt++;
+        }
     }
     return cnt;
+}
+
+ssize_t fs_build_free_inode_map(FileSystem *fs, Disk *disk)
+{
+    // malloc fs->free_inodes
+    fs->free_inodes = malloc(fs->meta_data.inode_blocks * INODES_PER_BLOCK);
+    if (fs->free_inodes == NULL)
+    {
+        error("failed to malloc fs->free_indoes");
+        return FS_FAILURE;
+    }
+
+    // skip superblock
+    size_t inodeBlockOffset = 1;
+
+    for (size_t b = inodeBlockOffset; b < inodeBlockOffset + fs->meta_data.inode_blocks; b++)
+    {
+        Block block;
+        if (disk_read(disk, b, (char *)block.inodes) == DISK_FAILURE)
+        {
+            error("failed on disk_read at inodeBlockOffSet: %d", b);
+            return FS_FAILURE;
+        }
+        for (size_t i = 0; i < INODES_PER_BLOCK; i++)
+        {
+            // if inode is in use (valid)
+            if (block.inodes[i].valid == true)
+            {
+                size_t inodeNum = INODES_PER_BLOCK * (b - 1) + i;
+                // mark it as invalid
+                fs->free_blocks[i] == false;
+            }
+        }
+    }
+
+    return FS_SUCCESS;
+    // fetch inode block
+    // if valid, set free_inodes[i] to false
 }
 
 /*
@@ -317,7 +364,7 @@ int fs_build_free_block_map(FileSystem *fs, Disk *disk)
         printf("free_blocks[%d]: %d\n", i, fs->free_blocks[i]);
     }
 
-    return fS_SUCCESS;
+    return FS_SUCCESS;
 }
 
 /**
@@ -356,14 +403,55 @@ ssize_t fs_create(FileSystem *fs)
         return FS_FAILURE;
     }
 
+    // find first available inode number
+    ssize_t res = fs_find_first_available_inode(fs);
+    if (res == FS_FAILURE)
+    {
+        error("failed on fs_find_first_available_inode");
+        return FS_FAILURE;
+    }
+
+    size_t inode_num = res;
+    size_t block_idx = inode_num / INODES_PER_BLOCK;
+    size_t cur_idx = inode_num % INODES_PER_BLOCK;
+
+    // read it from block
+    // increment fs->meta_data.inodes
+    // return it
+
+    // TODO: access that Inode by reading the corresponding inode blocks, set inode.valid = true
+    Block block;
+    if (disk_read(fs->disk, block_idx, (char *)block.inodes) == DISK_FAILURE)
+    {
+        error("failed on disk_read at block_index: %d", block_idx);
+        return FS_FAILURE;
+    }
+
+    Inode inode = block.inodes[cur_idx];
+    inode.valid = true;
+    inode.size = 0;
+    memset(inode.direct, 0, POINTERS_PER_INODE);
+
+    if (disk_write(fs->disk, block_idx, (char *)block.inodes) == DISK_FAILURE)
+    {
+        error("failed on disk_write at block_index: %d", block_idx);
+        return FS_FAILURE;
+    }
+
+    // FIXME: wrong
+    fs->meta_data.inodes++;
+    fs_mark_inode_status(fs, inode_num, INODE_UNAVAILABLE);
+    return inode_num;
+    /* Old code */
+
     /*
-            new inode location: [block_idx, lastIdx]
-            Example:
-            - INODES_PER_BLOCK = 3
-            - block_idx = 4 / 3 = 1
-            - cur_idx = 4 % 3 = 1
-            [0, 1, 2] [3]
-        */
+                // new inode location: [block_idx, lastIdx]
+                // Example:
+                // - INODES_PER_BLOCK = 3
+                // - block_idx = 4 / 3 = 1
+                // - cur_idx = 4 % 3 = 1
+                // [0, 1, 2] [3]
+
     size_t block_idx = fs->meta_data.inodes / INODES_PER_BLOCK;
     size_t cur_idx = fs->meta_data.inodes % INODES_PER_BLOCK;
 
@@ -386,9 +474,54 @@ ssize_t fs_create(FileSystem *fs)
         return FS_FAILURE;
     }
 
+    // FIXME: wrong
     ssize_t inode_num = fs->meta_data.inodes;
     fs->meta_data.inodes++;
     return inode_num;
+
+    */
+}
+
+/*
+ * Find first available inode number from fs->free_inodes.
+ * @param       fs              Pointer to FileSystem structure.
+ * @return      return available inode number if found, if not, return FS_FAILURE.
+ */
+ssize_t fs_find_first_available_inode(FileSystem *fs)
+{
+    size_t total_inodes = INODES_PER_BLOCK * fs->meta_data.inode_blocks;
+    for (size_t i = 0; i < total_inodes; i++)
+    {
+        // if invalid (false), return it
+        if (fs->free_inodes[i] == false)
+        {
+            return i;
+        }
+    }
+    return FS_FAILURE;
+}
+
+size_t fs_get_total_inodes(FileSystem *fs)
+{
+    size_t total_inodes = INODES_PER_BLOCK * fs->meta_data.inode_blocks;
+}
+
+/*
+ * @param       fs              Pointer to FileSystem structure.
+ * @param       inode_num       inode number.
+ * @param       available       available means this inode is ready to be used.
+ * @return      return fS_SUCCESS if no error, else return FS_FAILURE.
+ */
+ssize_t fs_mark_inode_status(FileSystem *fs, size_t inode_num, bool available)
+{
+    size_t total_inodes = fs_get_total_inodes(fs);
+    if (inode_num >= total_inodes)
+    {
+        error("inode_num [%ld] exceed total_inodes [%ld]", inode_num, total_inodes);
+        return FS_FAILURE;
+    }
+    fs->free_inodes[inode_num] = available;
+    return FS_SUCCESS;
 }
 
 /**

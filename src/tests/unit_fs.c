@@ -92,6 +92,7 @@ int test_01_fs_create()
 
     debug("Check creating inodes");
     assert(fs_create(&fs) == 0);
+
     for (size_t i = 2; i < 128; i++)
     {
         info("i: %ld", i);

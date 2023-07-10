@@ -16,8 +16,11 @@
 #define POINTERS_PER_INODE (5)    /* Number of direct pointers per inode */
 #define POINTERS_PER_BLOCK (1024) /* Number of pointers per block */
 
+#define INODE_AVAILABLE (true)
+#define INODE_UNAVAILABLE (false)
+
 #define FS_FAILURE (false)
-#define fS_SUCCESS (true)
+#define FS_SUCCESS (true)
 
 /* File System Structures */
 
@@ -59,6 +62,7 @@ struct FileSystem
 {
     Disk *disk;           /* Disk file system is mounted on */
     bool *free_blocks;    /* Free block bitmap */
+    bool *free_inodes;    /* Free block bitmap */
     SuperBlock meta_data; /* File system meta data */
 };
 
@@ -81,9 +85,14 @@ ssize_t fs_stat(FileSystem *fs, size_t inode_number);
 ssize_t fs_read(FileSystem *fs, size_t inode_number, char *data, size_t length, size_t offset);
 ssize_t fs_write(FileSystem *fs, size_t inode_number, char *data, size_t length, size_t offset);
 
+ssize_t fs_build_free_inode_map(FileSystem *fs, Disk *disk);
+
 int fs_build_free_block_map(FileSystem *fs, Disk *disk);
 ssize_t fs_count_inodes(FileSystem *fs);
 size_t fs_count_inodes_from_block(Block *block);
+ssize_t fs_find_first_available_inode(FileSystem *fs);
+ssize_t fs_mark_inode_status(FileSystem *fs, size_t inode_num, bool available);
+size_t fs_get_total_inodes(FileSystem *fs);
 
 #endif
 
