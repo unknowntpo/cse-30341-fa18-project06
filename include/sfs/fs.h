@@ -19,8 +19,8 @@
 #define INODE_AVAILABLE (true)
 #define INODE_UNAVAILABLE (false)
 
-#define FS_FAILURE (false)
-#define FS_SUCCESS (true)
+#define FS_FAILURE (-1)
+#define FS_SUCCESS (0)
 
 /* File System Structures */
 
